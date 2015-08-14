@@ -1,0 +1,39 @@
+Convert Intel format hex file to Cypress format bootloadable .cyacd file.
+
+
+.cyacd file format:
+    [4-byte SiliconID][1-byte SiliconRev][checksum type]
+    The data records have the format:
+    [1-byte ArrayID][2-byte RowNumber][2-byte DataLength][N-byte Data][1byte Checksum]
+    The Checksum is computed by summing all bytes (excluding the checksum itself) and then taking the 2's complement.
+
+eg:
+    Line 518   : ":0200000490600A"
+    Recordstart: ":"
+    Byte Count : 0x02
+    Address    : 0x0000
+    Record Type: 0x04
+    Data       : "9060" : 0x90 0x60
+    Checksum   : 0x0A
+    Checksum   
+    Calculation: 0x0A = 0x100 ­ (0x02+0x00+0x00+0x04+0x90+0x60)
+
+
+Procedure:
+use arm-none-eabi-size to determine text size
+
+    arm-none-eabi-size --format=Berkeley Bootloadable\ Blinking\ LED.elf
+    text    data     bss     dec     hex filename
+    6464      24    1512    8000    1f40 Bootloadable Blinking LED.elf
+Number of rows:
+    arm-none-eabi-size --format=Berkeley UART_Bootloader.elf 
+    text    data     bss     dec     hex filename
+    4456      32    1672    6160    1810 UART_Bootloader.elf
+
+Conversion:
+    Bootloader size  = 4456/128 = 34 = 0x22. 
+    So skip 34*2 line, ie lines 0-((34*2)-1) lines, since hex file has 64 byte size lines.
+    Combine data from next odd and even lines to from combined data. So for every two lines in .hex file ( after the skip), there will be one line in .cyacd. See ihex2cyacd.pl for more details. 
+    Row number is incremented for every odd-even line combination after the skip, whose data length is 0x40. 
+    Repeat this for every line which has data length of 0x40, and combined data from odd and even lines are not "0". But keep row number incrementing for "0"s lines.
+    
