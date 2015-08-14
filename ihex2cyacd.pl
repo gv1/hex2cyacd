@@ -35,6 +35,8 @@
 # so, skip 34*2 lines in .hex file. Combine the next two lines each from hex 
 # file to form a single line of text in .cyacd file. Calculate new checksum 
 # and append. Repeat till end, and again skip lines that are not 64 bytes.Also skip lines with "\A['0']+\Z" data - all zeros.
+# current version is extended to check the byte count from hex file, and do the
+# conversion accordingly.
 
 $line = 0;
 $total_bc = 0;
@@ -42,114 +44,117 @@ $total_bc = 0;
 $v = 0;
 
 $cyacd_line = "";
-$odd = 1;
-$odd_z = 0;
+$start_of_cyacd_line = 1;
+$end_of_cyacd_line = 0;
+$zeros_data = 0;
 $start_cyacd = 0;
 $print_cyacd = 0;
 $short = 0;
-$bootloader_text_size = $ARGV[0] ;
-$flash_row_size = $ARGV[1];
-$in_file = $ARGV[2];
-$out_file = $ARGV[3];
-shift;
-shift;
-shift;
-shift;
+$skip_line = 0;
+$lines_to_combine = 0;
+$lines_to_combine_cnt = 0;
+( $bootloader_text_size, $flash_row_size, $in_file, $out_file ) = @ARGV;
 $silicon_id="04161193";
 $silicon_rev="11";
 $checksum_type="00";
-$boot_loader_text_rows = int($bootloader_text_size/$flash_row_size);
-$lines_to_skip = $boot_loader_text_rows * 2;
-$cyacd_i = $boot_loader_text_rows;
-# print "cyacd_i = ". $cyacd_i . "\n";
-# print "Rows = " . $boot_loader_text_rows . "\n";  
-# print "Line to skip " . $lines_to_skip . "\n";
 open ($IFH, "<", $in_file ) || die "Unable to read hex file " . $in_file . "\n";
 open ($OFH, ">", $out_file ) || die "Unable to create cyacd file " . $out_file . "\n";
-# print "041611931100\n";
 print $OFH $silicon_id . $silicon_rev . $checksum_type . "\n";
 
 while(<$IFH>) {
     print "Line : $line ::: $_" if ( $v == 1 );
     if (/:(..)(....)(..)(.*)(...)/) {
-	# print "Byte Count : $1\n" if ( $v == 1 );
-	$bc = $1;
-	next if ( $bc != 40);
-	# print "Bytecount = $bc\n";
-	# $total_bc = $total_bc + $bc;
-	# print "Address    : $2\n" if ( $v == 1 );
-	# $addr = $2;
-	# print "Record Type: $3 : " if ( $v == 1 );
-	# $rt = $3;
-	# if ( $rt == "00" ) {
-	#    print " Data" if ( $v == 1 );
-	# }
-	# if ( $rt == "01" ) {
-	#    print "EOF" if ( $v == 1 );
-	# }
-	# if ( $rt == "02" ) {
-	#    print "Extended Segment Address" if ( $v == 1 );
-	# }
-	# if ( $rt == "03" ) {
-	#    print "Start Segment Address" if ( $v == 1 );
-	# }
-	# if ( $rt == "04" ) {
-	#    print "Extended Linear Address" if ( $v == 1 );
-	# }
-	# if ( $rt == "05" ) {
-	#    print "Start Linear Address" if ( $v == 1 );
-	# }
-	# print "\n" if ( $v == 1 );
-	# print "Data       : $4\n" if ( $v == 1 );
-	$data_all = $4;
-	# @data = unpack("(A[2])*",$4);
-	# for ($i=0; $i<($#data + 1); $i++) {
-	#    print $i . " " . @data[$i] . "\n" if ( $v == 1 );
-	# }
-	# $cs  = $5;
-	# print "Checksum   : $5\n\n\n" if ( $v == 1 );
+	$bc = hex($1);
+	if ( $line == 0 ) {
+	    $input_bc = $bc;
+	    # number of text rows in bootloader elf
+	    $boot_loader_text_rows = int($bootloader_text_size/$flash_row_size);
+	    # start row count in .cyacd
+	    $cyacd_row_cnt = $boot_loader_text_rows; 
+	    # number of lines from input hex to form the required data line 
+	    $lines_to_combine = $flash_row_size/$bc;	    
+	    # number of lines corresponding to bootloader
+	    $lines_to_skip = $boot_loader_text_rows * $lines_to_combine;
+	    print "cyacd_row_cnt = ". $cyacd_row_cnt . "\n" if ( $v == 1);
+	    print "Rows = " . $boot_loader_text_rows . "\n" if ( $v == 1);
+	    print "Lines to combine " . "$flash_row_size / $bc = " . $lines_to_combine . "\n" if ($v == 1);
+	    print "Line to skip " . $lines_to_skip . "\n" if ( $v == 1);
+	}
+	next if ( $bc != $input_bc);
+	$input_line_data = $4;
 	if ( $line < $lines_to_skip ) {
+	    $skip_line = 1;
 	    $start_cyacd = 0;
 	    $print_cyacd = 0;
+	    $cyacd_line = "";
+	    $line++;
 	} else {
+	    $skip_line = 0;
 	    $start_cyacd = 1;
 	    $print_cyacd = 1;
 	}
-	if ( $odd == 1 ) {
+	next if ( $skip_line == 1);
+	if ( $start_of_cyacd_line == 1 ) {
 	    $cyacd_line = "";
 	    $print_cyacd = 1;
-	    if ($data_all =~ /\A['0']+\Z/ ) {
-		$odd_z = 1;
+	    if ($input_line_data =~ /\A['0']+\Z/ ) {
+		$zeros_data = 1;
 	    } else {
-		$odd_z = 0;
+		$zeros_data = 0;
 	    }
-	    $cyacd_line = ":00" . sprintf("%04X",$cyacd_i) . "0080" ;
-	    $cyacd_line .= $data_all;
-	    $odd = 0;
+	    $cyacd_line = ":00" . sprintf("%04X",$cyacd_row_cnt) . "0080" ;
+	    $cyacd_line .= $input_line_data;
+	    $end_of_cyacd_line = 0;
+	    $lines_to_combine_cnt = 0;
+	    $start_of_cyacd_line = 0;
 	} else {
-	    if ($data_all =~ /\A['0']+\Z/ ) {
-		if ($odd_z == 1) {
+	    $cyacd_line .= $input_line_data;
+	    if ($lines_to_combine_cnt == ($lines_to_combine - 2)) {
+		$end_of_cyacd_line = 1;
+		$print_cyacd = 1;
+		$lines_to_combine_cnt = 0;
+	    } else {
+		$lines_to_combine_cnt++;
+	    }
+	    if ( $end_of_cyacd_line == 0 ) {
+		if ($input_line_data =~ /\A['0']+\Z/ ) {
+		    if ($zeros_data == 1) {
+			$print_cyacd = 0;
+		    }
+		} else {
+		    $zeros_data = 0;
+		    $print_cyacd = 1;
+		}
+	    } else {		
+		if ($input_line_data =~ /\A['0']+\Z/ ) {
+		    if ($zeros_data == 1) {
+			$print_cyacd = 0;
+			$zeros_data = 0;
+			$start_of_cyacd_line = 1;				    
+			$lines_to_combine_cnt = 0;
+		    }
+		} else {
+		    $zeros_data = 0;
+		}
+		if ( $print_cyacd == 1) {
+		    $binval = pack( 'H*', substr($cyacd_line,1));
+		    $checksum = unpack( "%8C*", $binval );
+		    $checksum = (0xff-$checksum+1) & 0x00ff;
+		    print $OFH $cyacd_line . sprintf("%02X",$checksum). "\n";	
 		    $print_cyacd = 0;
+		    $zeros_data = 0;
+		    $start_of_cyacd_line = 1;				    
+		    $lines_to_combine_cnt = 0;
+		}
+		if ( $start_cyacd == 1 ) {
+		    $cyacd_row_cnt += 1;
 		}
 	    }
-	    if ( $print_cyacd == 1) {
-		$cyacd_line .= $data_all;
-		$binval = pack( 'H*', substr($cyacd_line,1));
-		$checksum = unpack( "%8C*", $binval );
-		# $checksum = (0xff-$checksum+1) & 0xff;
-		$checksum = (0xff-$checksum+1) & 0x00ff;
-		print $OFH $cyacd_line . sprintf("%02X",$checksum). "\n";	
-	    }
-	    if ( $start_cyacd == 1 ) {
-		$cyacd_i += 1;
-	    }
-	    $odd = 1;
 	}	
     } else {
 	print "Error" if ( $v == 1 );
     }
     $line++;
 }
-# print "\nTotal bytes = " . $total_bc . "\n";
 close($IFH);
 close($OFH);

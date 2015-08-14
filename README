@@ -37,3 +37,11 @@ Conversion:
     Row number is incremented for every odd-even line combination after the skip, whose data length is 0x40. 
     Repeat this for every line which has data length of 0x40, and combined data from odd and even lines are not "0". But keep row number incrementing for "0"s lines.
     
+update:
+	Now takes byte count from first line of hex file and uses that to find out number of lines to combine etc.
+	test targets: 
+		test1 CY8CKIT-049-41XX_GPIO_Example
+		test2 CY8CKIT-049-41XX_PWM_Example
+		test3 CY8CKIT-049-41XX_UART_Example
+		test4 test/Bootloadable Blinking LED
+		test5 test/test, elf from compile on linux ( ../cysample.linux )

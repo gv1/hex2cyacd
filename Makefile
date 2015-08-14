@@ -40,3 +40,10 @@ test4:
 	-rm -f "test/Bootloadable Blinking LED_new.cyacd"
 	perl ihex2cyacd.pl $(TSIZE4) 128 "test/Bootloadable Blinking LED.hex" "test/Bootloadable Blinking LED_new.cyacd"
 	diff --strip-trailing-cr "test/Bootloadable Blinking LED.cyacd" "test/Bootloadable Blinking LED_new.cyacd"
+
+test5:
+	-rm -f "test/test.cyacd"
+	perl ihex2cyacd.pl $(TSIZE4) 128 "test/test.hex" "test/test.cyacd"
+
+debug d:
+	perl -d ihex2cyacd.pl $(TSIZE1) 128 test/CY8CKIT-049-41XX_GPIO_Example.hex test/CY8CKIT-049-41XX_GPIO_Example_new.cyacd
