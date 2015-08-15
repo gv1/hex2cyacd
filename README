@@ -1,6 +1,5 @@
 Convert Intel format hex file to Cypress format bootloadable .cyacd file.
 
-
 .cyacd file format:
     [4-byte SiliconID][1-byte SiliconRev][checksum type]
     The data records have the format:
@@ -18,8 +17,32 @@ eg:
     Checksum   
     Calculation: 0x0A = 0x100 ­ (0x02+0x00+0x00+0x04+0x90+0x60)
 
+Fraction of Makefile showing the usage:
+
+    hex:
+    	arm-none-eabi-objcopy --gap-fill 0x00 -O ihex -v CY8CKIT-049-41XX_GPIO_Example.org.elf CY8CKIT-049-41XX_GPIO_Example.hex
+
+    BOOTLOADER=./UART_Bootloader.elf
+    TSIZE=$(shell arm-none-eabi-size $(BOOTLOADER) | grep $(notdir $(BOOTLOADER)) | awk '{ print $$1 }')
+    cyacd:
+    	-rm -f CY8CKIT-049-41XX_GPIO_Example_new.cyacd
+    	perl ../../hex2cyacd/ihex2cyacd.pl $(TSIZE) 128 CY8CKIT-049-41XX_GPIO_Example.hex CY8CKIT-049-41XX_GPIO_Example_new.cyacd
+    	diff CY8CKIT-049-41XX_GPIO_Example_new.cyacd CY8CKIT-049-41XX_GPIO_Example.org.cyacd
+    	diff --strip-trailing-cr CY8CKIT-049-41XX_GPIO_Example_new.cyacd CY8CKIT-049-41XX_GPIO_Example.org.cyacd
+    flash:
+    	../../cybootload_linux/cybootload_linux CY8CKIT-049-41XX_GPIO_Example_new.cyacd
+
+See also makefiles in cysample.linux.
 
 Procedure:
+New version now skips bytes corresponding to the bootloader, packs the reset into 128 bytes and ignores if all are zero. 
+
+Intially this was how it all started: 
+( later multiple lines were combined, and finally simpler byte packing. I guess this can 
+further be simplified into few lines of perl code! : 
+	pack all data, skip bootheader, unpack into 128 each, skip if 0s
+)
+
 use arm-none-eabi-size to determine text size
 
     arm-none-eabi-size --format=Berkeley Bootloadable\ Blinking\ LED.elf
