@@ -59,6 +59,10 @@ $silicon_rev="11";
 $checksum_type="00";
 open ($IFH, "<", $in_file ) || die "Unable to read hex file " . $in_file . "\n";
 open ($OFH, ">", $out_file ) || die "Unable to create cyacd file " . $out_file . "\n";
+# add CR LF, as required by programmer sw tool, cybootload_linux, 0x0d 0x0a
+# otherwise, following error occurs from programmer sw tool, cybootload_linux.
+# [ERROR] The amount of data available is outside the expected range [0x3]
+binmode($OFH,":crlf");
 print $OFH $silicon_id . $silicon_rev . $checksum_type . "\n";
 
 while(<$IFH>) {
