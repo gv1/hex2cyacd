@@ -23,23 +23,7 @@
 #flash:
 #        ../../cybootload_linux/cybootload_linux CY8CKIT-049-41XX_GPIO_Example_new.cyacd
 
-
-$line = 0;
-$cyacd_line = "";
-$start_of_cyacd_line = 1;
-$end_of_cyacd_line = 
-$line = 0;
-$cyacd_line = "";
-$start_of_cyacd_line = 1;
-$end_of_cyacd_line = 0;
-$zeros_data = 0;
-$start_cyacd = 0;
-$print_cyacd = 0;
-$short = 0;
-$skip_line = 0;
-$lines_to_combine = 0;
-$lines_to_combine_cnt = 0;
-$total_bc = 0;
+$alldata ="";
 ( $bootloader_text_size, $flash_row_size, $in_file, $out_file ) = @ARGV;
 $boot_loader_text_rows = int($bootloader_text_size/$flash_row_size);
 $cyacd_row_cnt = $boot_loader_text_rows; 
@@ -49,8 +33,6 @@ $total_bytes_to_skip=$bootloader_text_size;
 $silicon_id="04161193";
 $silicon_rev="11";
 $checksum_type="00";
-$remaining="";
-
 open ($IFH, "<", $in_file ) || die "Unable to read hex file " . $in_file . "\n";
 open ($OFH, ">", $out_file ) || die "Unable to create cyacd file " . $out_file . "\n";
 # add CR LF, as required by programmer sw tool, cybootload_linux, 0x0d 0x0a
@@ -58,58 +40,33 @@ open ($OFH, ">", $out_file ) || die "Unable to create cyacd file " . $out_file .
 # [ERROR] The amount of data available is outside the expected range [0x3]
 binmode($OFH,":crlf");
 print $OFH $silicon_id . $silicon_rev . $checksum_type . "\n";
-$cyacd_record = "";
-$cyacd_record_start = 1; # start of record
-$cyacd_record_bc = 0; # bytes in this record
 while(<$IFH>) {
-    $line++;
-    chop;
-    chop;
-    $hexrec=$_;
-    ( $length, $addr, $type, $data_cs ) = unpack( 'A2 A4 A2 A*', substr($hexrec,1) );
+    s/[\r\n]//g;
+    $hexrec = $_;
+    ( $length, $addr, $type, $data_cs ) = unpack( 'A2 A4 A2 A*', substr($hexrec,
+1) );
     $len=hex($length)*2;
     ($data, $cs) = unpack("A$len A2",$data_cs);
-    $bc = hex($length);	
-    $total_bc += $bc;
-    next if ( $total_bc < $total_bytes_to_skip);
-    if ( $cyacd_record_start == 1 ) {
-	$cyacd_record_header = ":00" . sprintf("%04X",$cyacd_row_cnt) . "0080" ;
-	if ( $remaining ne "") {
-	    $cyacd_record = $remaining . $data;
-	    $cyacd_record_bc = length($remaining)/2 + $bc;
-	} else {
-	    $cyacd_record = $data;
-	    $cyacd_record_bc = $bc;
-	}
-	$cyacd_record_start = 0;
-	$cyacd_row_cnt += 1;
-    } else {
-	$cyacd_record .= $data;
-	$cyacd_record_bc += $bc;
-    }
-    if ($cyacd_record_bc >= ($flash_row_size )) {
-	if ( $cyacd_record_bc > ($flash_row_size )) {
-	    ($cyacd_line,$remaining) = unpack("A267 A*",$cyacd_record_header . $cyacd_record );
-	} else {
-	    $cyacd_line = $cyacd_record_header . $cyacd_record ;
-	}
-	# skip if all zeros
-	if ( $cyacd_record =~ /\A['0']+\Z/ ) {
-	    # print $OFH "All zeros!\n";
-	} else {
-	    $binval = pack( 'H*', substr($cyacd_line,1));
-	    $checksum = unpack( "%8C*", $binval );
-	    $checksum = (0xff-$checksum+1) & 0x00ff;
-	    print $OFH $cyacd_line . sprintf("%02X",$checksum). "\n";
-	}
-	$cyacd_record_start = 1;
-    }
+    $alldata .= $data;
+    $binrec = pack( 'H*', substr( $hexrec, 1 ) );
+    die "die $hexrec" unless unpack( "%8C*", $binrec ) == 0;
 }
-# if ( $cyacd_record_bc > 0 ) {
-# print "Exit with $cyacd_record_header . $cyacd_record : $cyacd_record_bc\n";
-#    $len = length( $cyacd_record )/2;
-#    $cyacd_record .= '0' x (( 128 - $len )*2);
-#    print $OFH $cyacd_record_header. $cyacd_record. "\n";
-# }
 close($IFH);
-close($OFH);
+$len=$flash_row_size*2;
+@o = unpack( "(A$len)*",$alldata);
+$skip = $total_bytes_to_skip ; // * $flash_row_size;
+$line = 0;
+for $data (@o) {
+    $line++;
+    next if ( $line * $flash_row_size < $skip );
+    next if ( $data =~ /\A['0']*\Z/ );
+    next if ( length($data) < 128 * 2);
+    $cyacd_data = ":00". sprintf("%04X",$line-1) . sprintf("%04X",length($data)/2) . $data ;
+    $binrec = pack( 'H*', substr( $cyacd_data, 1 ) );
+    $cs = unpack( "%8C*", $binrec );
+    $cs = (0xff-$cs+1) & 0x00ff;
+    $cyacd_data .= sprintf("%02X",$cs) ;
+    $binrec = pack( 'H*', substr( $cyacd_data , 1 ) );
+    die "die $hexrec" unless unpack( "%8C*", $binrec ) == 0;
+    print $OFH  $cyacd_data . "\n"; # unpack("A*",$data) . "\n"; 
+}
