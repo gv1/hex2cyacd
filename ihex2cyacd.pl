@@ -70,3 +70,4 @@ for $data (@o) {
     die "die $hexrec" unless unpack( "%8C*", $binrec ) == 0;
     print $OFH  $cyacd_data . "\n"; # unpack("A*",$data) . "\n"; 
 }
+close($OFH);
