@@ -49,7 +49,7 @@ while(<$IFH>) {
     ($data, $cs) = unpack("A$len A2",$data_cs);
     $alldata .= $data;
     $binrec = pack( 'H*', substr( $hexrec, 1 ) );
-    die "die $hexrec" unless unpack( "%8C*", $binrec ) == 0;
+    die "bad checksum : $hexrec" unless unpack( "%8C*", $binrec ) == 0;
 }
 close($IFH);
 $len=$flash_row_size*2;
@@ -67,7 +67,7 @@ for $data (@o) {
     $cs = (0xff-$cs+1) & 0x00ff;
     $cyacd_data .= sprintf("%02X",$cs) ;
     $binrec = pack( 'H*', substr( $cyacd_data , 1 ) );
-    die "die $hexrec" unless unpack( "%8C*", $binrec ) == 0;
+    die "bad checksum : $hexrec" unless unpack( "%8C*", $binrec ) == 0;
     print $OFH  $cyacd_data . "\n"; # unpack("A*",$data) . "\n"; 
 }
 close($OFH);
