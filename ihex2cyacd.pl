@@ -40,6 +40,8 @@ open ($OFH, ">", $out_file ) || die "Unable to create cyacd file " . $out_file .
 # [ERROR] The amount of data available is outside the expected range [0x3]
 binmode($OFH,":crlf");
 print $OFH $silicon_id . $silicon_rev . $checksum_type . "\n";
+$prev_addr = "0000";
+
 while(<$IFH>) {
     s/[\r\n]//g;
     $hexrec = $_;
@@ -47,6 +49,8 @@ while(<$IFH>) {
 1) );
     $len=hex($length)*2;
     ($data, $cs) = unpack("A$len A2",$data_cs);
+    next if (hex($addr) < (hex($prev_addr))); 
+    $prev_addr = $addr;
     $alldata .= $data;
     $binrec = pack( 'H*', substr( $hexrec, 1 ) );
     die "bad checksum : $hexrec" unless unpack( "%8C*", $binrec ) == 0;
@@ -54,14 +58,18 @@ while(<$IFH>) {
 close($IFH);
 $len=$flash_row_size*2;
 @o = unpack( "(A$len)*",$alldata);
-$skip = $total_bytes_to_skip ; // * $flash_row_size;
+$skip = $total_bytes_to_skip ; 
 $line = 0;
 for $data (@o) {
     $line++;
     next if ( $line * $flash_row_size < $skip );
     next if ( $data =~ /\A['0']*\Z/ );
-    next if ( length($data) < 128 * 2);
-    $cyacd_data = ":00". sprintf("%04X",$line-1) . sprintf("%04X",length($data)/2) . $data ;
+    # next if ( length($data) < $flash_row_size * 2);
+    # $cyacd_data = ":00". sprintf("%04X",$line-1) . sprintf("%04X",length($data)/2) . $data ;
+    $cyacd_data = ":00". sprintf("%04X",$line-1) . sprintf("%04X",$flash_row_size) . $data ;
+    if ( length($data) < $flash_row_size * 2) {
+	$cyacd_data .= "0" x ( ($flash_row_size * 2) - length($data));
+    } 
     $binrec = pack( 'H*', substr( $cyacd_data, 1 ) );
     $cs = unpack( "%8C*", $binrec );
     $cs = (0xff-$cs+1) & 0x00ff;
