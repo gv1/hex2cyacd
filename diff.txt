@@ -1,0 +1,66 @@
+====
+1:2c
+  < CY8CKIT-049-41XX_GPIO_Example.org:     file format elf32-littlearm
+2:2c
+  < CY8CKIT-049-41XX_PWM_Example.elf:     file format elf32-littlearm
+3:2c
+  < CY8CKIT-049-41XX_UART_Example.elf:     file format elf32-littlearm
+====
+1:4,12c
+  > CY8CKIT-049-41XX_GPIO_Example.elf:     file format elf32-littlearm
+  1939a1940,1944
+  >     7fc0:	000f11b9 			; <UNDEFINED> instruction: 0x000f11b9
+  >     7fc4:	00001d00 	andeq	r1, r0, r0, lsl #26
+  >     7fc8:	00080000 	andeq	r0, r8, r0
+  >     7fcc:	00000000 	andeq	r0, r0, r0
+  >     7fd0:	00010000 	andeq	r0, r1, r0
+  1953c1958
+  < 90500008:	87ca1a04 	strbhi	r1, [sl, r4, lsl #20]
+2:4,12c
+  > CY8CKIT-049-41XX_PWM_Example.org:     file format elf32-littlearm
+  1959,1963d1958
+  <     7fc0:	000f115c 	andeq	r1, pc, ip, asr r1	; <UNPREDICTABLE>
+  <     7fc4:	00001d00 	andeq	r1, r0, r0, lsl #26
+  <     7fc8:	00080000 	andeq	r0, r8, r0
+  <     7fcc:	00000000 	andeq	r0, r0, r0
+  <     7fd0:	00010000 	andeq	r0, r1, r0
+  1977c1972
+  < 90500008:	cb431d04 	blgt	915c7420 <cy_meta_chipprotect+0xfc7420>
+3:4,12c
+  > CY8CKIT-049-41XX_UART_Example.org:     file format elf32-littlearm
+  1990,1994d1989
+  <     7fc0:	000f1149 	andeq	r1, pc, r9, asr #2
+  <     7fc4:	00001d00 	andeq	r1, r0, r0, lsl #26
+  <     7fc8:	00080000 	andeq	r0, r8, r0
+  <     7fcc:	00000000 	andeq	r0, r0, r0
+  <     7fd0:	00010000 	andeq	r0, r1, r0
+  2008c2003
+  < 90500008:	cb461d04 	blgt	91687420 <cy_meta_chipprotect+0x1087420>
+====
+1:14,21c
+  > 90500008:	cb3f1d04 	blgt	914c7420 <cy_meta_chipprotect+0xec7420>
+  6163a6169,6174
+  > 
+  > Disassembly of section .cychecksum:
+  > 
+  > 90300000 <.cychecksum>:
+  > 90300000:	Address 0x90300000 is out of bounds.
+  > 
+2:14,21c
+  > 90500008:	87ca1a04 	strbhi	r1, [sl, r4, lsl #20]
+  7320,7325d7314
+  < 
+  < Disassembly of section .cychecksum:
+  < 
+  < 90300000 <.cychecksum>:
+  < 90300000:	Address 0x90300000 is out of bounds.
+  < 
+3:14,21c
+  > 90500008:	87ca1a04 	strbhi	r1, [sl, r4, lsl #20]
+  7393,7398d7387
+  < 
+  < Disassembly of section .cychecksum:
+  < 
+  < 90300000 <.cychecksum>:
+  < 90300000:	Address 0x90300000 is out of bounds.
+  < 
